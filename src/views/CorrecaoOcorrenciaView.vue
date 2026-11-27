@@ -5,6 +5,10 @@ import api from '@/services/api'
 
 import iconeNuvem from '@/assets/icones/foto.svg'
 import iconeCorreto from '@/assets/icones/correto.svg'
+import iconeSetaEsquerda from '@/assets/icones/setaesquerda.svg'
+import iconeCredencial from '@/assets/icones/credencial.svg'
+import IconePessoa from '@/assets/icones/pessoa.svg'
+import iconeData from '@/assets/icones/data.svg'
 import iconeCadeado from '@/assets/icones/folha.svg'
 import iconeInfo from '@/assets/icones/alertavermelho.svg'
 import iconeFoto from '@/assets/icones/foto.svg'
@@ -134,7 +138,7 @@ onMounted(carregarOcorrencia)
     <header class="barra-superior">
       <span class="etiqueta-topo">MARCENARIA FINA • CANTEIRO OPERACIONAL</span>
       <div class="avatar-topo">
-        <img :src="iconePessoa" alt="Perfil" />
+        <img :src="IconePessoa" alt="Perfil" />
       </div>
     </header>
 
@@ -158,7 +162,6 @@ onMounted(carregarOcorrencia)
     <p v-if="carregando" class="estado-texto">Carregando dados da ocorrência...</p>
 
     <div v-else class="grade-duas-colunas">
-      <!-- CARTÃO ESQUERDO: OCORRÊNCIA REGISTRADA -->
       <section class="cartao-branco">
         <div class="topo-cartao">
           <span class="badge-rosa">OCORRÊNCIA REGISTRADA</span>
@@ -200,7 +203,6 @@ onMounted(carregarOcorrencia)
         </div>
       </section>
 
-      <!-- CARTÃO DIREITO: SOLUÇÃO TÉCNICA -->
       <section class="cartao-branco">
         <div class="topo-cartao">
           <span class="badge-azul">SOLUÇÃO TÉCNICA</span>
@@ -213,7 +215,7 @@ onMounted(carregarOcorrencia)
           <div class="campo">
             <label>Responsável pela Correção</label>
             <div class="input-cinza">
-              <img :src="iconePessoa" alt="Responsável" />
+              <img :src="iconeCredencial" alt="Responsável" />
               <input v-model="responsavelCorrecao" type="text" readonly />
             </div>
           </div>
@@ -221,7 +223,7 @@ onMounted(carregarOcorrencia)
           <div class="campo">
             <label>Prazo para Realização</label>
             <div class="input-cinza">
-              <img :src="iconeCalendario" alt="Prazo" />
+              <img :src="iconeData" alt="Prazo" />
               <input v-model="prazoRealizacao" type="text" readonly />
             </div>
           </div>
