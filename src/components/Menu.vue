@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import iconeCasaVermelha from '@/assets/icones/casavermelha.svg'
 import iconePredioCinza from '@/assets/icones/prediocinza.svg'
 import iconeAlertaCinza from '@/assets/icones/alertacinza.svg'
@@ -8,7 +8,20 @@ import iconePessoa from '@/assets/icones/pessoa.svg'
 import iconeEngrenagem from '@/assets/icones/engrenagem.svg'
 
 const roteador = useRouter()
+const rota = useRoute()
 const menuEngrenagemAberto = ref(false)
+
+
+const usuarioLogado = computed(() => {
+  void rota.path
+  try {
+    return JSON.parse(localStorage.getItem('usuario') || '{}')
+  } catch {
+    return {}
+  }
+})
+
+const ehEscritorio = computed(() => usuarioLogado.value.perfil === 'Escritorio')
 
 const alternarMenuEngrenagem = () => {
   menuEngrenagemAberto.value = !menuEngrenagemAberto.value
@@ -20,7 +33,6 @@ const irParaLogin = () => {
   localStorage.removeItem('token')
   roteador.push('/login')
 }
-
 </script>
 
 <template>
@@ -35,51 +47,62 @@ const irParaLogin = () => {
       </div>
 
       <nav class="navegacao-menu">
-        <router-link to="/" class="item-navegacao" exact-active-class="ativo">
+       
+        <router-link
+          v-if="ehEscritorio"
+          to="/"
+          class="item-navegacao"
+          exact-active-class="ativo"
+        >
           <img :src="iconeCasaVermelha" alt="Início" class="icone-menu" />
           <span>Início</span>
         </router-link>
 
+      
         <router-link to="/obras" class="item-navegacao" active-class="ativo">
           <img :src="iconePredioCinza" alt="Obras" class="icone-menu" />
-          <span>Obras</span>
+          <span>{{ ehEscritorio ? 'Obras' : 'Minhas Obras' }}</span>
         </router-link>
 
+      
         <router-link to="/ocorrencias" class="item-navegacao" active-class="ativo">
           <img :src="iconeAlertaCinza" alt="Ocorrências" class="icone-menu" />
           <span>Ocorrências</span>
         </router-link>
+
+       
+        
       </nav>
     </div>
 
-  <div class="rodape-sidebar">
-  <div v-if="menuEngrenagemAberto" class="menu-popover-engrenagem">
-    <button type="button" class="item-menu-engrenagem" @click="irParaLogin">
-      <img :src="iconePessoa" alt="Login" />
-      <span>Login</span>
-    </button>
-  </div>
+    <div class="rodape-sidebar">
+      <div v-if="menuEngrenagemAberto" class="menu-popover-engrenagem">
+        <button type="button" class="item-menu-engrenagem" @click="irParaLogin">
+          <img :src="iconePessoa" alt="Login" />
+          <span>Sair / Trocar Conta</span>
+        </button>
+      </div>
 
-  <div class="cartao-usuario-sidebar">
-    <div class="avatar-sidebar">
-      <img :src="iconePessoa" alt="Usuário" />
+      <div class="cartao-usuario-sidebar">
+        <div class="avatar-sidebar">
+          <img :src="iconePessoa" alt="Usuário" />
+        </div>
+
+        <div class="info-usuario-sidebar">
+          <strong>{{ usuarioLogado.identificador || 'Móveis Medeiros' }}</strong>
+          <span>{{ ehEscritorio ? 'Escritório • Gestão' : 'Montador • Canteiro' }}</span>
+        </div>
+
+        <button
+          type="button"
+          class="botao-engrenagem"
+          title="Opções"
+          @click="alternarMenuEngrenagem"
+        >
+          <img :src="iconeEngrenagem" alt="Configurações" />
+        </button>
+      </div>
     </div>
-
-    <div class="info-usuario-sidebar">
-      <strong>Móveis Medeiros</strong>
-      <span>Operação Canteiro</span>
-    </div>
-
-    <button
-      type="button"
-      class="botao-engrenagem"
-      title="Opções"
-      @click="alternarMenuEngrenagem"
-    >
-      <img :src="iconeEngrenagem" alt="Configurações" />
-    </button>
-  </div>
-</div>
   </aside>
 </template>
 

@@ -22,10 +22,14 @@ const realizarLogin = async () => {
       senha: campoSenha.value
     })
 
-    if (resposta.data?.token) {
-      localStorage.setItem('token', resposta.data.token)
-    }
-    localStorage.setItem('usuario', JSON.stringify(resposta.data))
+  const dados = resposta.data
+localStorage.setItem('usuario', JSON.stringify(dados))
+
+if (dados.perfil === 'Montador') {
+  roteador.push('/obras')
+} else {
+  roteador.push('/')
+}
 
     roteador.push('/')
   } catch (erro) {

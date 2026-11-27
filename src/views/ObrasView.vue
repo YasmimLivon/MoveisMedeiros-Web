@@ -67,6 +67,15 @@ const obterUsuarioId = () => {
   }
 }
 
+const ehEscritorio = computed(() => {
+  try {
+    const usuarioSalvo = JSON.parse(localStorage.getItem('usuario') || '{}')
+    return usuarioSalvo.perfil === 'Escritorio'
+  } catch {
+    return false
+  }
+})
+
 const carregarAuxiliares = async () => {
   try {
     const usuarioId = obterUsuarioId()
@@ -143,7 +152,8 @@ const carregarObras = async () => {
   erroConexao.value = ''
 
   try {
-    const resposta = await api.get('/Obra')
+    const usuarioId = obterUsuarioId()
+    const resposta = await api.get('/Obra', { params: { usuarioId } })
     listaObras.value = (resposta.data || []).map((obra) => {
       const id = obra.id ?? obra.obraId
       return {
@@ -212,16 +222,22 @@ const cadastrarNovaObra = async () => {
       Number(String(novaObra.value.codigoProjeto).replace(/\D/g, '')) ||
       Math.floor(1000 + Math.random() * 9000)
 
-    const respObra = await api.post('/Obra', {
-      codigo: codigoNumerico,
-      clienteId: Number(clienteId),
-      montadorId,
-      arquitetoId,
-      dataInspecao: dataInspecaoIso,
-      prazo: prazoIso,
-      pdf: novaObra.value.nomeArquivoPdf || 'planejamento.pdf',
-      status: 'Em Andamento'
-    })
+    const respObra = await api.post(
+  '/Obra',
+  {
+    codigo: codigoNumerico,
+    clienteId: Number(clienteId),
+    montadorId,
+    arquitetoId,
+    dataInspecao: dataInspecaoIso,
+    prazo: prazoIso,
+    pdf: novaObra.value.nomeArquivoPdf || 'planejamento.pdf',
+    status: 'Em Andamento'
+  },
+  {
+    params: { usuarioId: obterUsuarioId() }
+  }
+)
 
     const obraCriadaId = respObra.data?.id ?? respObra.data?.obraId
 
@@ -294,11 +310,13 @@ const obrasFiltradas = computed(() => {
 const abrirDetalhesObra = (id) => {
   roteador.push(`/obras/${id}`)
 }
-
 onMounted(async () => {
-  await Promise.all([carregarObras(), carregarAuxiliares()])
-  if (rota.query.nova === 'true') {
-    await abrirModalNovaObra()
+  await carregarObras()
+  if (ehEscritorio.value) {
+    await carregarAuxiliares()
+    if (rota.query.nova === 'true') {
+      await abrirModalNovaObra()
+    }
   }
 })
 </script>
@@ -318,13 +336,24 @@ onMounted(async () => {
       </div>
     </header>
 
-    <section class="cabecalho-gestao">
+   <section class="cabecalho-gestao">
       <div class="titulos-gestao">
-        <h1>Gestão de Obras &amp; Clientes</h1>
-        <p>Monitoramento de prazos executivos e liberação de plantas</p>
+        <h1>{{ ehEscritorio ? 'Gestão de Obras & Clientes' : 'Minhas Obras de Montagem' }}</h1>
+        <p>
+          {{
+            ehEscritorio
+              ? 'Monitoramento de prazos executivos e liberação de plantas'
+              : 'Acompanhamento das montagens atribuídas a você'
+          }}
+        </p>
       </div>
 
-      <button type="button" class="botao-nova-obra" @click="abrirModalNovaObra">
+      <button
+        v-if="ehEscritorio"
+        type="button"
+        class="botao-nova-obra"
+        @click="abrirModalNovaObra"
+      >
         + Nova Obra/Cliente
       </button>
     </section>

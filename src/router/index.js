@@ -44,9 +44,21 @@ const roteador = createRouter({
 });
 
 roteador.beforeEach((destino) => {
-  const usuarioLogado = localStorage.getItem('usuario')
-  if (destino.path !== '/login' && !usuarioLogado) {
+  const usuarioSalvo = localStorage.getItem('usuario')
+  const usuario = usuarioSalvo ? JSON.parse(usuarioSalvo) : null
+
+  if (destino.path !== '/login' && !usuario) {
     return '/login'
+  }
+
+  if (usuario && usuario.perfil === 'Montador') {
+    const ehPaginaProibida =
+      destino.path === '/' ||
+      destino.path === '/usuarios'
+
+    if (ehPaginaProibida) {
+      return '/obras'
+    }
   }
 })
 

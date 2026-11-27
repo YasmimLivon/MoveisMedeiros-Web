@@ -33,7 +33,7 @@ const obterParamsAcesso = () => {
     const usuarioSalvo = JSON.parse(localStorage.getItem('usuario') || '{}')
     return {
       montadorId: usuarioSalvo.montadorId ? Number(usuarioSalvo.montadorId) : 1,
-      usuarioId: usuarioSalvo.id ? Number(usuarioSalvo.id) : 1
+      usuarioId: usuarioSalvo.id || usuarioSalvo.usuarioId ? Number(usuarioSalvo.id || usuarioSalvo.usuarioId) : 1
     }
   } catch {
     return { montadorId: 1, usuarioId: 1 }
@@ -103,24 +103,37 @@ const enviarFeedbackEAtualizar = async () => {
 
   salvando.value = true
   try {
-    const { montadorId } = obterParamsAcesso()
+    const { montadorId, usuarioId } = obterParamsAcesso()
     const obraId = Number(ocorrencia.value?.obraId)
 
-    await api.put(`/Ocorrencia/${ocorrenciaId}`, {
-      obraId,
-      montadorId: Number(ocorrencia.value?.montadorId || montadorId),
-      fotoOcorrencia: fotoCorrigidaUrl.value || ocorrencia.value?.fotoOcorrencia || 'corrigido.png',
-      local: ocorrencia.value?.local || '',
-      descricao: `${ocorrencia.value?.descricao || ''} | Solução: ${descricaoServicoFeito.value.trim()}`,
-      prazo: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+   
+    await api.put(
+      `/Ocorrencia/${ocorrenciaId}`,
+      {
+        obraId,
+        montadorId: Number(ocorrencia.value?.montadorId || montadorId),
+        fotoOcorrencia: fotoCorrigidaUrl.value || ocorrencia.value?.fotoOcorrencia || 'corrigido.png',
+        local: ocorrencia.value?.local || '',
+        descricao: `${ocorrencia.value?.descricao || ''} | Solução: ${descricaoServicoFeito.value.trim()}`,
+        prazo: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      },
+      { params: { usuarioId } }
+    )
+
+   
+    await api.patch(`/Ocorrencia/${ocorrenciaId}/solucionar`, null, {
+      params: { usuarioId }
     })
 
-    if (obraId) {
-      await api.patch(`/Obra/${obraId}/concluir`)
-    }
+    alert('Ocorrência solucionada e obra concluída com sucesso!')
 
-    alert('Feedback enviado e status atualizado para Liberado / Concluído!')
-    roteador.push('/obras')
+    
+    const usuarioSalvo = JSON.parse(localStorage.getItem('usuario') || '{}')
+    if (usuarioSalvo.perfil === 'Montador') {
+      roteador.push('/obras')
+    } else {
+      roteador.push('/')
+    }
   } catch (erro) {
     console.error('Erro ao atualizar ocorrência:', erro.response?.data || erro)
     const detalhes = erro.response?.data || 'Erro ao concluir ocorrência.'

@@ -57,6 +57,8 @@ const ehPerfilEscritorio = computed(() => {
   return !perfil.includes('montador')
 })
 
+const obterUsuarioId = () => Number(usuarioLogado.value.id || usuarioLogado.value.usuarioId) || 1
+
 const nomeTitularProjeto = computed(() => {
   if (!obra.value) return ''
   return (
@@ -107,18 +109,24 @@ const carregarDetalhes = async () => {
   carregando.value = true
   erroCarregamento.value = ''
 
-    try {
-    const respObra = await api.get(`/Obra/${obraId}`)
+  try {
+    const usuarioId = obterUsuarioId()
+
+    const respObra = await api.get(`/Obra/${obraId}`, {
+      params: { usuarioId }
+    })
     obra.value = respObra.data
 
+    // Busca as ocorrências específicas desta obra passando o usuarioId
     try {
-      const respOcorrencias = await api.get('/Ocorrencia')
+      const respOcorrencias = await api.get(`/Ocorrencia/obra/${obraId}`, {
+        params: { usuarioId }
+      })
       const listaOc = Array.isArray(respOcorrencias.data) ? respOcorrencias.data : []
-      const encontrada = listaOc.find(
-        (oc) => Number(oc.obraId) === Number(obraId) && oc.resolvida === false
-      )
+      const encontrada = listaOc.find((oc) => !oc.resolvida)
       ocorrenciaAbertaId.value = encontrada ? (encontrada.id ?? encontrada.ocorrenciaId) : null
-    } catch {
+    } catch (e) {
+      console.error('Erro ao buscar ocorrências da obra:', e)
       ocorrenciaAbertaId.value = null
     }
 
@@ -246,20 +254,33 @@ const irParaRelatarOcorrencia = () => {
   })
 }
 
-const irParaSolucionarOcorrencia = () => {
+const irParaSolucionarOcorrencia = async () => {
   if (ocorrenciaAbertaId.value) {
     roteador.push(`/ocorrencias/${ocorrenciaAbertaId.value}/correcao`)
-  } else {
-    roteador.push({
-      path: '/ocorrencias',
-      query: { obraId }
-    })
+    return
   }
+
+  
+  try {
+    const resp = await api.get(`/Ocorrencia/obra/${obraId}`, {
+      params: { usuarioId: obterUsuarioId() }
+    })
+    const aberta = (resp.data || []).find((oc) => !oc.resolvida)
+    if (aberta) {
+      roteador.push(`/ocorrencias/${aberta.id}/correcao`)
+      return
+    }
+  } catch (e) {
+    console.error(e)
+  }
+
+  alert('Nenhuma ocorrência em aberto encontrada para esta obra.')
 }
 
 const enviarFeedbackEConcluir = async () => {
   try {
-    await api.patch(`/Obra/${obraId}/concluir`)
+    const usuarioId = obterUsuarioId()
+    await api.patch(`/Obra/${obraId}/concluir`, null, { params: { usuarioId } })
     alert('Feedback enviado e obra concluída com sucesso!')
     roteador.push('/obras')
   } catch (erro) {

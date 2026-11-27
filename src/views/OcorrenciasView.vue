@@ -1,5 +1,5 @@
-<script setup>
-import { ref, onMounted } from 'vue'
+<<script setup>
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 
@@ -26,18 +26,31 @@ const pontoLocal = ref('')
 const descricaoProblema = ref('')
 const enviando = ref(false)
 
+const usuarioLogado = computed(() => {
+  try {
+    return JSON.parse(localStorage.getItem('usuario') || '{}')
+  } catch {
+    return {}
+  }
+})
+
+const ehEscritorio = computed(() => usuarioLogado.value.perfil === 'Escritorio')
+const obterUsuarioId = () => Number(usuarioLogado.value.id || usuarioLogado.value.usuarioId) || 1
+
 const carregarObras = async () => {
   try {
-    const [respObras, respMont] = await Promise.allSettled([
-      api.get('/Obra'),
-      api.get('/Montador')
-    ])
+    const usuarioId = obterUsuarioId()
 
-    if (respObras.status === 'fulfilled') {
-      listaObras.value = respObras.value.data || []
-    }
-    if (respMont.status === 'fulfilled') {
-      listaMontadores.value = respMont.value.data || []
+    const respObras = await api.get('/Obra', { params: { usuarioId } })
+    listaObras.value = respObras.data || []
+
+    if (ehEscritorio.value) {
+      try {
+        const respMont = await api.get('/Montador', { params: { usuarioId } })
+        listaMontadores.value = respMont.data || []
+      } catch {
+        listaMontadores.value = []
+      }
     }
 
     if (obraSelecionadaId.value) {
@@ -71,7 +84,9 @@ const definirDadosObra = (dados) => {
 
 const carregarObraEspecifica = async (id) => {
   try {
-    const resp = await api.get(`/Obra/${id}`)
+    const resp = await api.get(`/Obra/${id}`, {
+      params: { usuarioId: obterUsuarioId() }
+    })
     definirDadosObra(resp.data)
   } catch {
     const encontrada = listaObras.value.find((o) => (o.id ?? o.obraId) === Number(id))
@@ -110,18 +125,19 @@ const cancelarEVoltar = () => {
   }
 }
 
-
-
 const obterMontadorIdValido = () => {
- const obraAtual = listaObras.value.find((o) => Number(o.id) === Number(obraSelecionadaId.value))
+  if (usuarioLogado.value.montadorId) {
+    return Number(usuarioLogado.value.montadorId)
+  }
 
- const idDaObra = Number(obraAtual?.montadorId || obraAtual?.montador?.id)
+  const obra = listaObras.value.find((o) => Number(o.id) === Number(obraSelecionadaId.value))
+  const idDaObra = Number(obra?.montadorId || obra?.montador?.id)
   if (idDaObra > 0) return idDaObra
 
   if (listaMontadores.value?.length > 0) {
     return Number(listaMontadores.value[0].id)
   }
-  
+
   return 1
 }
 
@@ -143,15 +159,22 @@ const enviarNotificacao = async () => {
   try {
     const idObra = Number(obraSelecionadaId.value)
     const montadorId = obterMontadorIdValido()
+    const usuarioId = obterUsuarioId()
 
-    const respOcorrencia = await api.post('/Ocorrencia', {
-      obraId: idObra,
-      montadorId,
-      fotoOcorrencia: fotoArquivo.value?.name || 'evidencia.png',
-      local: pontoLocal.value.trim(),
-      descricao: descricaoProblema.value.trim(),
-      prazo: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    })
+    const respOcorrencia = await api.post(
+      '/Ocorrencia',
+      {
+        obraId: idObra,
+        montadorId,
+        fotoOcorrencia: fotoArquivo.value?.name || 'evidencia.png',
+        local: pontoLocal.value.trim(),
+        descricao: descricaoProblema.value.trim(),
+        prazo: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      },
+      {
+        params: { usuarioId }
+      }
+    )
 
     const ocorrenciaId = respOcorrencia.data?.id ?? respOcorrencia.data?.ocorrenciaId
 
@@ -165,24 +188,11 @@ const enviarNotificacao = async () => {
       }
     }
 
-    const respObra = await api.get(`/Obra/${idObra}`)
-    const o = respObra.data
-
-    await api.put(`/Obra/${idObra}`, {
-      codigo: o.codigo || `PRJ-${idObra}`,
-      clienteId: Number(o.clienteId),
-      montadorId: Number(o.montadorId),
-      arquitetoId: Number(o.arquitetoId),
-      dataInspecao: o.dataInspecao || new Date().toISOString(),
-      prazo: o.prazo || new Date().toISOString(),
-      pdf: o.pdf || 'planejamento.pdf',
-      status: 'Com Ocorrência'
-    })
-
-    if (ocorrenciaId) {
+    if (ehEscritorio.value && ocorrenciaId) {
       roteador.push(`/ocorrencias/${ocorrenciaId}/correcao`)
     } else {
-      roteador.push('/obras')
+      alert('Ocorrência registrada com sucesso! O escritório foi notificado.')
+      roteador.push(`/obras/${idObra}`)
     }
   } catch (erro) {
     console.error('Erro ao registrar ocorrência:', erro.response?.data || erro)
