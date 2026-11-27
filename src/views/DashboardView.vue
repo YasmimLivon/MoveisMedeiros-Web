@@ -22,50 +22,57 @@ const filtroStatus = ref('todas')
 const carregando = ref(true)
 const erroConexao = ref('')
 
+const obterUsuarioId = () => {
+  try {
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
+    return Number(usuario.id || usuario.Id || usuario.usuarioId) || 1
+  } catch {
+    return 1
+  }
+}
+
 const carregarDadosDaApi = async () => {
   carregando.value = true
   erroConexao.value = ''
 
   try {
-    const respostaObras = await api.get('/Obra')
-    listaObras.value = (respostaObras.data || []).map((obra) => {
-      const id = obra.id ?? obra.obraId
-      return {
-        id,
-        cliente:
-          obra.clienteNome ||
-          obra.nomeCliente ||
-          obra.cliente?.nome ||
-          obra.nome ||
-          obra.descricao ||
-          `Obra #${id}`,
-        contrato: obra.numeroContrato
-          ? `Contrato #${obra.numeroContrato} • ${obra.descricao || ''}`
-          : obra.descricao || `Contrato #MM-${id}`,
-        telefone: obra.telefone || '(11) 99421-8890',
-        endereco: obra.endereco || 'Endereço não cadastrado',
-        status: obra.status || 'Em Andamento'
-      }
-    })
+    const usuarioId = obterUsuarioId()
 
-    const obterUsuarioId = () => {
-  try {
-    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
-    return Number(usuario.id || usuario.usuarioId) || 1
-  } catch {
-    return 1
-  }
-}
-    try {
-      
-      const respostaOcorrencias = await api.get('/Ocorrencia')
-      const ocorrencias = respostaOcorrencias.data || []
+    const [respostaObras, respostaOcorrencias] = await Promise.allSettled([
+      api.get('/Obra', { params: { usuarioId } }),
+      api.get('/Ocorrencia', { params: { usuarioId } })
+    ])
+
+    if (respostaObras.status === 'fulfilled') {
+      listaObras.value = (respostaObras.value.data || []).map((obra) => {
+        const id = obra.id ?? obra.obraId
+        return {
+          id,
+          cliente:
+            obra.cliente?.nome ||
+            obra.clienteNome ||
+            obra.nomeCliente ||
+            `Obra #${id}`,
+          contrato: obra.codigo
+            ? `Contrato #${obra.codigo}`
+            : obra.numeroContrato
+              ? `Contrato #${obra.numeroContrato}`
+              : `Contrato #MM-${id}`,
+          telefone: obra.cliente?.telefone || obra.telefone || 'Não informado',
+          endereco: obra.cliente?.endereco || obra.endereco || 'Endereço não cadastrado',
+          status: obra.status || 'Em Andamento'
+        }
+      })
+    } else {
+      throw respostaObras.reason
+    }
+
+    if (respostaOcorrencias.status === 'fulfilled') {
+      const ocorrencias = respostaOcorrencias.value.data || []
       totalOcorrenciasAbertas.value = ocorrencias.filter(
-        (oc) =>
-          (oc.status || '').toLowerCase() !== 'resolvida' &&
-          (oc.status || '').toLowerCase() !== 'concluída'
+        (oc) => oc.resolvida === false
       ).length
-    } catch {
+    } else {
       totalOcorrenciasAbertas.value = listaObras.value.filter((o) =>
         o.status.toLowerCase().includes('ocorr')
       ).length
@@ -84,10 +91,11 @@ const totalEmAndamento = computed(() =>
   listaObras.value.filter((o) => o.status.toLowerCase().includes('andamento')).length
 )
 
-const totalComOcorrencia = computed(() =>
-  totalOcorrenciasAbertas.value ||
+  const totalComOcorrencia = computed(() =>
   listaObras.value.filter((o) => o.status.toLowerCase().includes('ocorr')).length
 )
+  listaObras.value.filter((o) => o.status.toLowerCase().includes('ocorr')).length
+
 
 const formatarDoisDigitos = (valor) => String(valor).padStart(2, '0')
 
@@ -248,7 +256,7 @@ onMounted(carregarDadosDaApi)
               class="etiqueta-status"
               :class="ehOcorrencia(obra.status) ? 'selo-vermelho' : 'selo-verde'"
             >
-              • {{ ehOcorrencia(obra.status) ? 'Com Ocorrência' : 'Em Andamento' }}
+              {{ ehOcorrencia(obra.status) ? 'Com Ocorrência' : 'Em Andamento' }}
             </span>
           </div>
 

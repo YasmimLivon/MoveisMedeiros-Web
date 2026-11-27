@@ -26,6 +26,7 @@ const obraId = rota.params.id
 const obra = ref(null)
 const carregando = ref(true)
 const erroCarregamento = ref('')
+const ocorrenciaAbertaId = ref(null)
 
 const itensChecklist = ref([])
 const novoItemTitulo = ref('')
@@ -106,9 +107,20 @@ const carregarDetalhes = async () => {
   carregando.value = true
   erroCarregamento.value = ''
 
-  try {
+    try {
     const respObra = await api.get(`/Obra/${obraId}`)
     obra.value = respObra.data
+
+    try {
+      const respOcorrencias = await api.get('/Ocorrencia')
+      const listaOc = Array.isArray(respOcorrencias.data) ? respOcorrencias.data : []
+      const encontrada = listaOc.find(
+        (oc) => Number(oc.obraId) === Number(obraId) && oc.resolvida === false
+      )
+      ocorrenciaAbertaId.value = encontrada ? (encontrada.id ?? encontrada.ocorrenciaId) : null
+    } catch {
+      ocorrenciaAbertaId.value = null
+    }
 
     try {
       const respItens = await api.get(`/ItensObra/obra/${obraId}`)
@@ -232,6 +244,17 @@ const irParaRelatarOcorrencia = () => {
     path: '/ocorrencias',
     query: { obraId }
   })
+}
+
+const irParaSolucionarOcorrencia = () => {
+  if (ocorrenciaAbertaId.value) {
+    roteador.push(`/ocorrencias/${ocorrenciaAbertaId.value}/correcao`)
+  } else {
+    roteador.push({
+      path: '/ocorrencias',
+      query: { obraId }
+    })
+  }
 }
 
 const enviarFeedbackEConcluir = async () => {
@@ -491,7 +514,7 @@ onMounted(carregarDetalhes)
       </section>
     </div>
 
-    <footer v-if="obra" class="barra-acoes-rodape">
+      <footer v-if="obra" class="barra-acoes-rodape">
       <button
         type="button"
         class="botao-relatar-ocorrencia"
@@ -508,6 +531,15 @@ onMounted(carregarDetalhes)
         @click="mostrarFormularioItem = !mostrarFormularioItem"
       >
         Editar
+      </button>
+
+      <button
+        v-if="ocorrenciaAbertaId || (obra?.status || '').toLowerCase().includes('ocorr')"
+        type="button"
+        class="botao-solucionar-azul"
+        @click="irParaSolucionarOcorrencia"
+      >
+        Solucionar Ocorrência
       </button>
 
       <button
@@ -923,6 +955,22 @@ onMounted(carregarDetalhes)
 .botao-mais-fotos img {
   width: 14px;
   height: 14px;
+}
+
+.botao-solucionar-azul {
+  background-color: #1d4ed8;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 18px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.botao-solucionar-azul:hover {
+  background-color: #1e40af;
 }
 
 .topo-checklist {

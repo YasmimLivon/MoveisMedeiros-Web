@@ -110,10 +110,12 @@ const cancelarEVoltar = () => {
   }
 }
 
+
+
 const obterMontadorIdValido = () => {
  const obraAtual = listaObras.value.find((o) => Number(o.id) === Number(obraSelecionadaId.value))
 
- const IdDaObra = Number(obraAtual?.montadorId || obraAtual?.montador?.id)
+ const idDaObra = Number(obraAtual?.montadorId || obraAtual?.montador?.id)
   if (idDaObra > 0) return idDaObra
 
   if (listaMontadores.value?.length > 0) {

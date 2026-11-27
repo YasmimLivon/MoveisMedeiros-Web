@@ -174,6 +174,7 @@ const cadastrarNovaObra = async () => {
   salvandoObra.value = true
   try {
     const respCliente = await api.post('/Cliente', {
+      usuarioId: obterUsuarioId(),
       nome: novaObra.value.clienteNome.trim(),
       telefone: novaObra.value.telefone.trim(),
       email: novaObra.value.email.trim(),
@@ -200,16 +201,19 @@ const cadastrarNovaObra = async () => {
       return
     }
 
-    const dataInspecaoIso = novaObra.value.dataInspecao
-      ? new Date(`${novaObra.value.dataInspecao}T12:00:00`).toISOString()
-      : new Date().toISOString()
+      const dataInspecaoIso =
+      novaObra.value.dataInspecao || new Date().toISOString().split('T')[0]
 
-    const prazoIso = novaObra.value.prazoMontagem
-      ? new Date(`${novaObra.value.prazoMontagem}T12:00:00`).toISOString()
-      : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
+      const prazoIso =
+      novaObra.value.prazoMontagem ||
+      new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+      const codigoNumerico =
+      Number(String(novaObra.value.codigoProjeto).replace(/\D/g, '')) ||
+      Math.floor(1000 + Math.random() * 9000)
 
     const respObra = await api.post('/Obra', {
-      codigo: novaObra.value.codigoProjeto,
+      codigo: codigoNumerico,
       clienteId: Number(clienteId),
       montadorId,
       arquitetoId,
@@ -218,6 +222,7 @@ const cadastrarNovaObra = async () => {
       pdf: novaObra.value.nomeArquivoPdf || 'planejamento.pdf',
       status: 'Em Andamento'
     })
+
     const obraCriadaId = respObra.data?.id ?? respObra.data?.obraId
 
     if (obraCriadaId) {

@@ -85,7 +85,7 @@ const irParaLogin = () => {
 
 <style scoped>
 
-.rodape-sidebar-wrapper {
+.rodape-sidebar {
   position: relative;
   margin-top: auto;
 }
